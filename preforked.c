@@ -24,7 +24,7 @@ struct http
    char *body;
    enum 
    {
-      GET, PUT, DELETE
+      GET, PUT, DELETE, POST
    } method;
    enum 
    {
@@ -66,43 +66,43 @@ int main(int argc, char *argv[])
 
 	totalWorkers = atoi(argv[1]);
 
-   	int worker;
-   	struct sockaddr_in addr_in;
+	int worker;
+	struct sockaddr_in addr_in;
 
-   	if (getcwd(ROOT, sizeof(ROOT)) == NULL) 
-   	{
-    	perror("Could not determine currect directory");
-      	exit(EXIT_FAILURE);
+	if (getcwd(ROOT, sizeof(ROOT)) == NULL) 
+	{
+ 	perror("Could not determine currect directory");
+   	exit(EXIT_FAILURE);
+	}
+
+	start_server();
+
+	for (int worker_count = 0; worker_count < totalWorkers; worker_count++) 
+	{
+   
+   	worker = fork();
+
+   	// Failed to fork
+   	if (worker < 0) 
+   	{  
+      	perror("Forking failed");
+   	} 
+   	// Sucessfull fork, this is the child process
+   	else if (worker == 0) 
+   	{  
+      	printf("New worker in slot %d (PID %d)!\n", worker_count, getpid());
+
+      	eloop(worker_count);
+
+      	_Exit(EXIT_SUCCESS);
    	}
+	}
 
-   	start_server();
+	// Wait for every children processes to die
+	while (waitpid(-1, NULL, 0) > 0);
 
-   	for (int worker_count = 0; worker_count < totalWorkers; worker_count++) 
-   	{
-      
-      	worker = fork();
-
-      	// Failed to fork
-      	if (worker < 0) 
-      	{  
-         	perror("Forking failed");
-      	} 
-      	// Sucessfull fork, this is the child process
-      	else if (worker == 0) 
-      	{  
-         	printf("New worker in slot %d (PID %d)!\n", worker_count, getpid());
-
-         	eloop(worker_count);
-
-         	_Exit(EXIT_SUCCESS);
-      	}
-   	}
-
-   	// Wait for every children processes to die
-   	while (waitpid(-1, NULL, 0) > 0);
-
-   	close(sock_fd);
-   	return 0;
+	close(sock_fd);
+	return 0;
 }
 
 
@@ -205,9 +205,13 @@ struct http parse_request(int csock_fd)
    	{
       	request.method = DELETE;
    	}
+      else if (strcmp(http_method, "POST") == 0) 
+      {
+         request.method = POST;
+      }
 
    	printf("  Method: %s\n", http_method);
-   	printf("  URI: %s\n", request.uri);
+   	printf("  URL: %s\n", request.uri);
    	printf("  Path: %s%s\n", ROOT, request.uri);
 
    	return request;
@@ -239,26 +243,26 @@ void respond(int csock_fd, struct http request)
 
    if (response.status == OK) 
    {
-      	FILE *f = fopen(concat(ROOT, request.uri), "r");
-      	int size  = fsize(f);
-      	char c;
-      	do
-      	{
-      		c = fgetc(f);
-      		if (feof(f))
-      			break;
-      		write(csock_fd, &c, 1);
-      		size--;
-      	}while(size > 0);
+   	FILE *f = fopen(concat(ROOT, request.uri), "r");
+   	int size  = fsize(f);
+   	char c;
+   	do
+   	{
+   		c = fgetc(f);
+   		if (feof(f))
+   			break;
+   		write(csock_fd, &c, 1);
+   		size--;
+   	}while(size > 0);
 
-      	fclose(f);
-   	}
+   	fclose(f);
+	}
 
-   	// Respond to client, writing to socket descriptors
-   	write(csock_fd, hstatus, sizeof(hstatus));
-   	write(csock_fd, hlength, sizeof(hlength));
-   	write(csock_fd, "Content-Type: text/html\n\n", 25);
-   	write(csock_fd, response.body, strlen(response.body));
+	// Respond to client, writing to socket descriptors
+	write(csock_fd, hstatus, sizeof(hstatus));
+	write(csock_fd, hlength, sizeof(hlength));
+	write(csock_fd, "Content-Type: text/html\n\n", 25);
+	write(csock_fd, response.body, strlen(response.body));
 
 }
 
