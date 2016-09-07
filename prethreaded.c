@@ -24,7 +24,7 @@ struct http
    char *body;
    enum 
    {
-      GET, PUT, DELETE
+      GET, PUT, DELETE, POST
    } method;
    enum 
    {
@@ -210,9 +210,13 @@ struct http parse_request(int csock_fd)
    	{
       	request.method = DELETE;
    	}
+      else if (strcmp(http_method, "POST") == 0) 
+      {
+         request.method = POST;
+      }
 
    	printf("  Method: %s\n", http_method);
-   	printf("  URI: %s\n", request.uri);
+   	printf("  URL: %s\n", request.uri);
    	printf("  Path: %s%s\n", ROOT, request.uri);
 
    	return request;
