@@ -1,3 +1,5 @@
+/*Client for web servers*/
+
 #include <assert.h>
 #include <string.h>
 #include <sys/types.h>
@@ -11,28 +13,28 @@
 #include <errno.h>
 #include <stdio.h> 
 #include <stdlib.h> 
-
 #include <time.h>
 #include <pthread.h>
 
 void *Client (void *k);
 void CreateRequests();
 
+//Al arguments from terminal
 char *host, *filename;
 int port, nThreads, nCycles;
 
 
+//Main function
 int main (int argc, char *argv[])
 {
     assert(argc == 6);
     
+    //Get all arguments from terminal
     host = argv[1];
     port = atoi(argv[2]);
     filename = argv[3];
     nThreads = atoi(argv[4]);
     nCycles = atoi(argv[5]);
-
-    //printf("%i\n",port);
 
     //Create log file with each server transcurred time
     FILE *log = fopen("ServerLog.txt", "a");
@@ -49,8 +51,6 @@ int main (int argc, char *argv[])
     	strcpy(filename, append);
     }
 
-    //fclose(log);
-
     //Start time
     clock_t start = clock();
     //Do request
@@ -62,24 +62,27 @@ int main (int argc, char *argv[])
 	fprintf(log, "Time taken %Lf seconds %Lf milliseconds\n\n\n", diff, diff * 1000);
 	//Colse file
 	fclose(log);
-
+	//Finish
     return 0;
 }
 
+//Function that make all the client requests, in nThreads
 void CreateRequests()
 {
-
+	//Create a pthreads array
 	pthread_t *tid = malloc( nThreads * sizeof(pthread_t) );
-
+	//Create all threads
 	for(int i=0; i<nThreads; i++ ) 
     	pthread_create( &tid[i], NULL, Client, NULL );
-
+    //Join all threads
     for(int i=0; i<nThreads; i++ ) 
     	pthread_join( tid[i], NULL );
 }
-    
+
+//Function that make nCycles requests
 void *Client(void *k)
 {
+	//Start the nCycles
 	for (int i = 0; i < (int)nCycles; i++)
 	{	
 		printf("Request\n\n");
@@ -87,26 +90,26 @@ void *Client(void *k)
 	    struct sockaddr_in sin;
 	    char buf[1024];
 	    
-	    /* Setup the socket */
+	    //Setup the socket 
 	    s = socket (AF_INET, SOCK_STREAM, 0);
 	    
-	    /* Make the connection */
+	    //Make the connection
 	    bzero (&sin, sizeof (sin));
 	    sin.sin_family = AF_INET;
 	    sin.sin_port = htons (port);
 	    inet_aton (host, &sin.sin_addr);
 	    connect (s, (struct sockaddr *) &sin, sizeof (sin));
 	    
-	    /* Write the filename */
+	    //Write the filename 
 	    write (s, filename, strlen (filename));
 	    write (s, "\n", 1);
 	    
-	    /* Send the bytes that come back to stdout */
+	    //Send the bytes that come back to stdout 
 	    while ((r = read (s, buf, sizeof (buf))) > 0){
 	        //write (1, buf, r);
 	    }
 	    
-	    /* Finish out */
+	    //Finish out
 	    close (s);
 	}
 }
